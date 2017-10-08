@@ -12,8 +12,10 @@ from lxml import html
 from flask import Flask
 from collections import OrderedDict
 import requests
+from requests_file import FileAdapter
 import json
 import io
+import os
 
 # The URL to scrape, a fake header to fool the server
 thePage = 'http://www.metacritic.com/game/playstation-4'
@@ -24,14 +26,31 @@ headers = {'User-Agent': 'MagicBrowser'}
 # - /games/ will return json with all games listed on the web page.
 
 app = Flask(__name__)
-@app.route('/games/<game>')
+
+# This method does the actual work of getting the data from the site
+# It also fakes the data from a text file captured with CURL when testing
+# so as not to unnecessarily pound the web site with requests.
+
+def get_html():
+  # App testing is set true from the unit test, if so, create a session
+  # and load the requests-file file adapter to read file:// urls
+  # otherwise use the normal get to hit the web site
+  if app.testing == True : 
+    session = requests.Session()
+    session.mount('file://',FileAdapter())
+    resp = session.get('file://'+os.getcwd()+'/metacritic.out')
+  else :
+    resp = requests.get(thePage, headers=headers)
+  return resp
+
+@app.route('/game/<game>')
 def show_a_game(game):
   # Init an xpath to parse the html for the game title and code
   gameXPath = './/div[@class="main_stats"]/div[@class="basic_stat product_title"]/h3[@class="product_title"]/a'
   scoreXPath = './/div[@class="main_stats"]/a'
   scoreXPathEnd = '/span[@class="metascore_w medium game positive"]/text()'
   # Make the request
-  req = requests.get(thePage,headers=headers)
+  req = get_html()
   # If the request is successful then begin parsing
   if req.status_code == 200:
     # Init an xpath tree from the html
@@ -48,7 +67,7 @@ def show_a_game(game):
     aScore = tree.xpath(scoreXPath)
     # Build the single json output
     output = ''
-    if aGame:
+    if aGame and aScore:
       output = '[\n  {\n    "title": "'+str(aGame[0])+'",\n    "score": '+str(aScore[0])+'\n  }\n]'
     # For dev purposes I print it formatted, then return to give the browser the output
     print output
@@ -62,7 +81,7 @@ def show_all_games():
   gameXPath = './/div[@class="main_stats"]/div[@class="basic_stat product_title"]/h3[@class="product_title"]/a/text()'
   scoreXPath = './/div[@class="main_stats"]/a/span[@class="metascore_w medium game positive"]/text()'
   # Issue the request
-  req = requests.get(thePage,headers=headers)
+  req = get_html()
   # If it succeeds then continue
   if req.status_code == 200:
     # Build the xpath tree
