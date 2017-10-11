@@ -12,9 +12,9 @@ For unit testing run: python sonytest.py or use nosetests
 
 A text file with the metacritic HTML is needed for unit testing and it must reside in the same directory in a file named "metacritic-out". If the file is missing you can recreate it with this command:
 
-'''
+```
 curl -X GET 'http://www.metacritic.com/game/playstation-4' -o metracritic-out -H 'User-Agent: Magic Browser'
-'''
+```
 
 This app scrapes http://www.metacritic.com/game/playstation-4 to extract the listed titles
 and their scores. The app uses the Flask framework and runs as a server that instantiates
